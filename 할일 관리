@@ -1,0 +1,168 @@
+import os
+import json
+from datetime import datetime
+
+TODO_FILE = "todo_list.json"
+PRIORITY_ORDER = {"높음": 1, "중간": 2, "낮음": 3}
+
+def load_tasks():
+    if os.path.exists(TODO_FILE):
+        with open(TODO_FILE, "r", encoding="utf-8") as f:
+            try:
+                return json.load(f)
+            except json.JSONDecodeError:
+                print("⚠️ 저장된 파일이 손상되어 새 목록으로 시작합니다.")
+                return []
+    return []
+
+def save_tasks(tasks):
+    with open(TODO_FILE, "w", encoding="utf-8") as f:
+        json.dump(tasks, f, indent=4, ensure_ascii=False)
+
+def show_tasks(tasks):
+    if not tasks:
+        print("할 일이 없습니다.")
+        return []
+
+    sorted_tasks = sorted(tasks, key=lambda x: PRIORITY_ORDER.get(x.get("priority", "낮음"), 3))
+    for i, task in enumerate(sorted_tasks, 1):
+        status = "✅" if task.get("done", False) else "❌"
+        print(f"{i}. {status} {task.get('title', '')} (생성일: {task.get('created_at', '')}, 마감기한: {task.get('deadline', '없음')}, 우선순위: {task.get('priority', '낮음')})")
+    return sorted_tasks
+
+def input_priority():
+    while True:
+        p = input("우선순위를 입력하세요 [높음/중간/낮음]: ").strip()
+        if p in PRIORITY_ORDER:
+            return p
+        else:
+            print("올바른 우선순위를 입력해주세요.")
+
+def input_deadline():
+    deadline = input("마감기한 (예: 2025-06-20, 없으면 엔터): ").strip()
+    if not deadline:
+        return "없음"
+    try:
+        datetime.strptime(deadline, "%Y-%m-%d")
+        return deadline
+    except ValueError:
+        print("날짜 형식이 잘못되었습니다. 마감기한을 '없음'으로 설정합니다.")
+        return "없음"
+
+def add_task(tasks):
+    title = input("할 일 내용을 입력하세요: ").strip()
+    created_at = datetime.now().strftime("%Y-%m-%d")
+    deadline = input_deadline()
+    priority = input_priority()
+    tasks.append({
+        "title": title,
+        "created_at": created_at,
+        "deadline": deadline,
+        "priority": priority,
+        "done": False
+    })
+    print("✅ 할 일이 추가되었습니다.")
+
+def mark_done(tasks):
+    if not tasks:
+        print("처리할 할 일이 없습니다.")
+        return
+
+    sorted_tasks = show_tasks(tasks)
+    try:
+        num = int(input("완료한 할 일 번호를 입력하세요: ")) - 1
+        if 0 <= num < len(sorted_tasks):
+            task_to_mark = sorted_tasks[num]
+            index = tasks.index(task_to_mark)
+            tasks[index]["done"] = True
+            print("✅ 완료 처리되었습니다.")
+        else:
+            print("잘못된 번호입니다.")
+    except ValueError:
+        print("숫자를 입력하세요.")
+
+def delete_task(tasks):
+    if not tasks:
+        print("삭제할 할 일이 없습니다.")
+        return
+
+    sorted_tasks = show_tasks(tasks)
+    try:
+        num = int(input("삭제할 할 일 번호를 입력하세요: ")) - 1
+        if 0 <= num < len(sorted_tasks):
+            task_to_delete = sorted_tasks[num]
+            tasks.remove(task_to_delete)
+            print("🗑️ 삭제되었습니다.")
+        else:
+            print("잘못된 번호입니다.")
+    except ValueError:
+        print("숫자를 입력하세요.")
+
+def edit_task(tasks):
+    if not tasks:
+        print("수정할 할 일이 없습니다.")
+        return
+
+    sorted_tasks = show_tasks(tasks)
+    try:
+        num = int(input("수정할 할 일 번호를 입력하세요: ")) - 1
+        if 0 <= num < len(sorted_tasks):
+            task_to_edit = sorted_tasks[num]
+            index = tasks.index(task_to_edit)
+
+            print(f"현재 제목: {task_to_edit.get('title', '')}")
+            new_title = input("새 제목 (엔터 누르면 변경 안 함): ").strip()
+            if new_title:
+                tasks[index]['title'] = new_title
+
+            print(f"현재 마감기한: {task_to_edit.get('deadline', '없음')}")
+            new_deadline = input("새 마감기한 (예: 2025-06-20, 엔터 시 변경 안 함): ").strip()
+            if new_deadline:
+                try:
+                    datetime.strptime(new_deadline, "%Y-%m-%d")
+                    tasks[index]['deadline'] = new_deadline
+                except ValueError:
+                    print("날짜 형식이 잘못되었습니다. 변경하지 않습니다.")
+
+            print(f"현재 우선순위: {task_to_edit.get('priority', '낮음')}")
+            new_priority = input("새 우선순위 [높음/중간/낮음] (엔터 시 변경 안 함): ").strip()
+            if new_priority in PRIORITY_ORDER:
+                tasks[index]['priority'] = new_priority
+
+            print("✏️ 수정이 완료되었습니다.")
+        else:
+            print("잘못된 번호입니다.")
+    except ValueError:
+        print("숫자를 입력해주세요.")
+
+def main():
+    tasks = load_tasks()
+    while True:
+        print("\n=== 📋 할 일 목록 앱 ===")
+        print("1. 목록 보기")
+        print("2. 할 일 추가")
+        print("3. 완료 처리")
+        print("4. 삭제")
+        print("5. 수정")
+        print("6. 저장 후 종료")
+
+        choice = input("선택: ").strip()
+        if choice == "1":
+            show_tasks(tasks)
+        elif choice == "2":
+            add_task(tasks)
+        elif choice == "3":
+            mark_done(tasks)
+        elif choice == "4":
+            delete_task(tasks)
+        elif choice == "5":
+            edit_task(tasks)
+        elif choice == "6":
+            save_tasks(tasks)
+            print("저장 후 종료합니다.")
+            break
+        else:
+            print("올바른 메뉴 번호를 선택해주세요.")
+
+if __name__ == "__main__":
+    main()
